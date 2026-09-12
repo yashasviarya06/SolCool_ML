@@ -3,38 +3,25 @@ import os
 import joblib
 
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.metrics import r2_score, accuracy_score
 
 
-# ==========================================
-# Load dataset
-# ==========================================
+# -----------------------------
+# Load data
+# -----------------------------
 
 data_path = "data/solcool_data.csv"
-
 df = pd.read_csv(data_path)
 
-print("Dataset loaded successfully")
-print(f"Rows: {len(df)}")
+os.makedirs("models", exist_ok=True)
 
 
-# ==========================================
-# Create models folder
-# ==========================================
+# -----------------------------
+# Demand Prediction Model
+# -----------------------------
 
-os.makedirs(
-    "models",
-    exist_ok=True
-)
-
-
-# ==========================================
-# DEMAND PREDICTION MODEL
-# ==========================================
-
-features = [
+demand_features = [
     "temperature",
     "humidity",
     "harvest_volume_kg",
@@ -43,10 +30,8 @@ features = [
     "storage_capacity_kg"
 ]
 
-X = df[features]
-
+X = df[demand_features]
 y = df["storage_demand_kg"]
-
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -55,42 +40,33 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42
 )
 
-
 demand_model = RandomForestRegressor(
-    n_estimators=200,
+    n_estimators=50,
+    max_depth=12,
+    min_samples_leaf=3,
     random_state=42,
     n_jobs=-1
 )
 
-demand_model.fit(
-    X_train,
-    y_train
-)
+demand_model.fit(X_train, y_train)
 
-predictions = demand_model.predict(
-    X_test
-)
+predictions = demand_model.predict(X_test)
 
-r2 = r2_score(
-    y_test,
-    predictions
-)
-
-print()
-print("Demand Prediction Model")
-print("-----------------------")
-print(f"R2 Score: {r2:.3f}")
-
+r2 = r2_score(y_test, predictions)
 
 joblib.dump(
     demand_model,
-    "models/demand_model.pkl"
+    "models/demand_model.pkl",
+    compress=3
 )
 
+print("Demand Model R²:", round(r2, 4))
+print("Demand model saved.")
 
-# ==========================================
-# SPOILAGE RISK MODEL
-# ==========================================
+
+# -----------------------------
+# Spoilage Risk Model
+# -----------------------------
 
 risk_features = [
     "temperature",
@@ -101,9 +77,7 @@ risk_features = [
 ]
 
 X = df[risk_features]
-
 y = df["spoilage_risk"]
-
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -113,44 +87,28 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y
 )
 
-
 risk_model = RandomForestClassifier(
-    n_estimators=200,
+    n_estimators=50,
+    max_depth=10,
+    min_samples_leaf=3,
+    class_weight="balanced",
     random_state=42,
-    n_jobs=-1,
-    class_weight="balanced"
+    n_jobs=-1
 )
 
-risk_model.fit(
-    X_train,
-    y_train
-)
+risk_model.fit(X_train, y_train)
 
-risk_predictions = risk_model.predict(
-    X_test
-)
+risk_predictions = risk_model.predict(X_test)
 
-accuracy = accuracy_score(
-    y_test,
-    risk_predictions
-)
-
-print()
-print("Spoilage Risk Model")
-print("-------------------")
-print(f"Accuracy: {accuracy:.3f}")
-
+accuracy = accuracy_score(y_test, risk_predictions)
 
 joblib.dump(
     risk_model,
-    "models/spoilage_model.pkl"
+    "models/spoilage_model.pkl",
+    compress=3
 )
 
+print("Spoilage Model Accuracy:", round(accuracy, 4))
+print("Spoilage model saved.")
 
-print()
-print("====================================")
-print("Models trained successfully!")
-print("====================================")
-print("Saved:")
-print("models/demand_model.pkl")
-print("models/spoilage_model.pkl")
+print("\nTraining complete!")
